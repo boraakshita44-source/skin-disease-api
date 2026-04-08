@@ -4,6 +4,8 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 import io
+import os
+import gdown
 
 app = FastAPI()
 
@@ -35,9 +37,17 @@ DESCRIPTIONS = {
     'VASC': 'Vascular skin lesion. Usually benign.'
 }
 
-# ✅ Load model
+# ✅ Download model from Google Drive
+MODEL_PATH = "skin_disease_model.h5"
+FILE_ID = "1geYQfFqfr670k-7mNojYARrWYhJV3EPN"
+
+if not os.path.exists(MODEL_PATH):
+    print("Downloading model from Google Drive...")
+    gdown.download(f"https://drive.google.com/uc?id={FILE_ID}", MODEL_PATH, quiet=False)
+    print("✅ Model downloaded!")
+
 print("Loading AI model...")
-model = tf.keras.models.load_model("../ai-model/model/skin_disease_model.h5")
+model = tf.keras.models.load_model(MODEL_PATH)
 print("✅ Model loaded!")
 
 @app.get("/")
@@ -46,14 +56,12 @@ def home():
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    # Read image
     contents = await file.read()
     img = Image.open(io.BytesIO(contents)).convert("RGB")
     img = img.resize((224, 224))
     img_array = np.array(img) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
 
-    # Predict
     predictions = model.predict(img_array)
     predicted_index = np.argmax(predictions[0])
     confidence = float(predictions[0][predicted_index]) * 100
